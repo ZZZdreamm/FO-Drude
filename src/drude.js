@@ -89,6 +89,11 @@ class Ion {
 
         this.x_current += this.vx_thermal * dt;
         this.y_current += this.vy_thermal * dt;
+        
+        // ZMIANA: Ograniczenie pozycji jonu do granic obszaru symulacji
+        const MARGIN = 1.0; 
+        this.x_current = constrain(this.x_current, MARGIN, L_GRID_WIDTH - MARGIN);
+        this.y_current = constrain(this.y_current, MARGIN, L_GRID_HEIGHT - MARGIN);
     }
 
     display() {
@@ -101,7 +106,7 @@ class Ion {
         
         ellipse(drawX, drawY, ION_SIZE, ION_SIZE);
         
-        fill(COLOR_TEXT); 
+        fill(COLOR_BACKGROUND); 
         textSize(CELL_SIZE * 1.5);
         textAlign(CENTER, CENTER);
         text('+', drawX, drawY);
@@ -243,33 +248,32 @@ function defineLayout() {
   L_GRID_WIDTH = floor(SIM_AREA_WIDTH / CELL_SIZE);
   L_GRID_HEIGHT = floor(SIM_AREA_HEIGHT / CELL_SIZE);
   
-  // ZMIANA: Przeniesienie elementów GUI z poprawionymi odstępami
+  // ZMIANA: Repozycjonowanie elementów GUI po zmianie rozmiaru
   const BASE_Y = height - GUI_BOTTOM_HEIGHT + 20;
-  const COL_GAP = 250;
   const CENTER_X = width / 2;
   
   if (eFieldSlider) {
-    // Pierwsza kolumna
-    select('#eFieldButtonText').position(CENTER_X - 550, BASE_Y + 10); // +10
-    eFieldButton.position(CENTER_X - 550, BASE_Y + 45); // +45
+    // Kolumna 1 (Przycisk)
+    select('#eFieldButtonText').position(CENTER_X - 550, BASE_Y + 10);
+    eFieldButton.position(CENTER_X - 550, BASE_Y + 45);
 
-    // Druga kolumna
+    // Kolumna 2 (Slider E)
     select('#eFieldText').position(CENTER_X - 400, BASE_Y + 10);
     eFieldSlider.position(CENTER_X - 400, BASE_Y + 45); 
-    
-    // Trzecia kolumna
+    
+    // Kolumna 3 (Slider TAU)
     select('#tempText').position(CENTER_X - 150, BASE_Y + 10);
     tempSlider.position(CENTER_X - 150, BASE_Y + 45); 
-    
-    // Czwarta kolumna
+    
+    // Kolumna 4 (Input N)
     select('#particleText').position(CENTER_X + 100, BASE_Y + 10);
     particleCountInput.position(CENTER_X + 100, BASE_Y + 45);
-    
-    // Piąta kolumna
+    
+    // Kolumna 5 (Przycisk Zastosuj)
     select('#applyButton').position(CENTER_X + 230, BASE_Y + 45);
-    
-    // Tekst szumu (niżej)
-    select('#noiseText').position(CENTER_X - 150, BASE_Y + 100); // +100
+    
+    // Tekst szumu (niżej, wyśrodkowany)
+    select('#noiseText').position(CENTER_X - 150, BASE_Y + 100);
   }
 }
 
@@ -345,14 +349,14 @@ function drawSideInfo() {
     textSize(20);
     text('Liczba (Lewa):', SIM_AREA_START_X - 20, SIM_AREA_START_Y + 100);
     textSize(36);
-    text(`${electrons_left_side}`, SIM_AREA_START_X - 20, SIM_AREA_START_Y + 135); // +135
+    text(`${electrons_left_side}`, SIM_AREA_START_X - 20, SIM_AREA_START_Y + 135); 
     
     // Prawa strona (liczniki)
     textAlign(LEFT, TOP);
     textSize(20);
     text('Liczba (Prawa):', SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 100);
     textSize(36);
-    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 135); // +135
+    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 135); 
     
     // Wizualizacja prądu/dryfu na dole
     textAlign(LEFT, TOP);
@@ -495,10 +499,10 @@ function createGUI() {
   createPStyled(`Szum E: ${ELECTRON_THERMAL_NOISE.toFixed(3)} | Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`, 
                  'noiseText', CENTER_X - 150, BASE_Y + 100)
     .style('font-size', '14px');
-    
-    // Konieczne jest wywołanie defineLayout() ponownie po utworzeniu elementów,
-    // aby pozycje były poprawne od razu
-    defineLayout(); 
+    
+    // Konieczne jest wywołanie defineLayout() ponownie po utworzeniu elementów,
+    // aby pozycje były poprawne od razu
+    defineLayout(); 
 }
 
 function drawGUIArea() {
