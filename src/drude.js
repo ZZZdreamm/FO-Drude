@@ -10,20 +10,20 @@ let N_PARTICLES = 300;
 const dt = 0.1; 
 const ELECTRON_CHARGE = -1.0;
 const ELECTRON_MASS = 1.0;
-let TAU = 20; // Ustawienie domyślne, zmieniane przez suwak
-let E_FIELD_VALUE = 0.5; // Zmienna do przechowywania wartości slidera E
-let current_e_field = 0.0; // Zmienna do śledzenia aktualnego stanu E_FIELD_X
+let TAU = 20; 
+let E_FIELD_VALUE = 0.5; 
+let current_e_field = 0.0; 
 
 // Parametry jonów
 const ION_SPRING_CONSTANT = 2.0; 
 const DAMPING_FACTOR = 0.98; 
-let THERMAL_NOISE_MULTIPLIER = 0.0005; // Zmieniane przez slider temperatury jonów
+let THERMAL_NOISE_MULTIPLIER = 0.0005; 
 const COLLISION_ENERGY_TRANSFER = 0.5; 
 
 // Parametry elektronów
 const ELECTRON_INITIAL_SPEED = 3.0; 
-let ELECTRON_THERMAL_NOISE = 0.05; // Zmieniane przez slider temperatury elektronów
-let E_FIELD_X = 0.0; // Główna zmienna pola E w logice fizycznej
+let ELECTRON_THERMAL_NOISE = 0.05; 
+let E_FIELD_X = 0.0; 
 let E_FIELD_Y = 0.0;
 
 let electrons = [];
@@ -41,7 +41,7 @@ let SIM_AREA_START_Y;
 let SIM_AREA_WIDTH;
 let SIM_AREA_HEIGHT;
 const GUI_TOP_HEIGHT = 50; 
-const GUI_BOTTOM_HEIGHT = 180; // Zwiększona wysokość na estetyczne GUI
+const GUI_BOTTOM_HEIGHT = 180; 
 
 // Elementy GUI
 let eFieldSlider;
@@ -49,16 +49,16 @@ let tempSlider;
 let particleCountInput;
 let textEField;
 let textTemp;
-let eFieldButton; // Dodany przycisk do przełączania E Field
+let eFieldButton; 
 
 
 // --- PALETA KOLORÓW ---
-const COLOR_BACKGROUND = '#1C1C1E'; // Ciemny grafit
-const COLOR_METAL = '#33333A';     // Ciemny popiel
-const COLOR_ION = '#00AEEF';       // Neonowy Cyjan (Jony)
-const COLOR_ELECTRON = '#FFC300';  // Jasny Pomarańcz/Żółty (Elektrony)
-const COLOR_ACCENT = '#FF4500';    // Czerwony Akcent (E Field)
-const COLOR_TEXT = '#EAEAEA';      // Jasny Tekst
+const COLOR_BACKGROUND = '#1C1C1E'; 
+const COLOR_METAL = '#33333A';     
+const COLOR_ION = '#00AEEF';       
+const COLOR_ELECTRON = '#FFC300';  
+const COLOR_ACCENT = '#FF4500';    
+const COLOR_TEXT = '#EAEAEA';      
 
 
 // --- KLASA ION ---
@@ -202,7 +202,7 @@ class Electron {
     
     ellipse(drawX, drawY, ELECTRON_SIZE, ELECTRON_SIZE);
     
-    fill(COLOR_BACKGROUND); // Ciemny znak minus
+    fill(COLOR_BACKGROUND); 
     textSize(CELL_SIZE);
     textAlign(CENTER, CENTER);
     text('-', drawX, drawY);
@@ -213,8 +213,7 @@ class Electron {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  // ZMIANA: Ustawienie czcionki
-  textFont('Arial, sans-serif'); 
+  textFont('Arial, sans-serif'); 
   defineLayout();
 
   initializeIons();
@@ -230,7 +229,6 @@ function windowResized() {
 }
 
 function defineLayout() {
-  // Zmniejszenie marginesów bocznych, aby obszar GUI nie był zbyt szeroki
   const MARGIN_X = 150; 
   const MARGIN_Y = 20;
 
@@ -239,27 +237,40 @@ function defineLayout() {
   SIM_AREA_WIDTH = width - 2 * MARGIN_X;
   SIM_AREA_HEIGHT = height - GUI_TOP_HEIGHT - GUI_BOTTOM_HEIGHT; 
 
-  // Zapewnienie minimalnego rozmiaru
   if (SIM_AREA_WIDTH < 100) SIM_AREA_WIDTH = 100;
   if (SIM_AREA_HEIGHT < 100) SIM_AREA_HEIGHT = 100;
 
   L_GRID_WIDTH = floor(SIM_AREA_WIDTH / CELL_SIZE);
   L_GRID_HEIGHT = floor(SIM_AREA_HEIGHT / CELL_SIZE);
-  
-  // Przeniesienie elementów GUI
-  if (eFieldSlider) {
-    eFieldSlider.position(width / 2 - 400, height - GUI_BOTTOM_HEIGHT + 70);
-    tempSlider.position(width / 2 - 150, height - GUI_BOTTOM_HEIGHT + 70);
-    particleCountInput.position(width / 2 + 100, height - GUI_BOTTOM_HEIGHT + 70);
-    select('#applyButton').position(width / 2 + 230, height - GUI_BOTTOM_HEIGHT + 70);
-    eFieldButton.position(width / 2 - 550, height - GUI_BOTTOM_HEIGHT + 70);
+  
+  // ZMIANA: Przeniesienie elementów GUI z poprawionymi odstępami
+  const BASE_Y = height - GUI_BOTTOM_HEIGHT + 20;
+  const COL_GAP = 250;
+  const CENTER_X = width / 2;
+  
+  if (eFieldSlider) {
+    // Pierwsza kolumna
+    select('#eFieldButtonText').position(CENTER_X - 550, BASE_Y + 10); // +10
+    eFieldButton.position(CENTER_X - 550, BASE_Y + 45); // +45
+
+    // Druga kolumna
+    select('#eFieldText').position(CENTER_X - 400, BASE_Y + 10);
+    eFieldSlider.position(CENTER_X - 400, BASE_Y + 45); 
     
-    // Przeniesienie tekstu
-    select('#eFieldText').position(width / 2 - 400, height - GUI_BOTTOM_HEIGHT + 20);
-    select('#tempText').position(width / 2 - 150, height - GUI_BOTTOM_HEIGHT + 20);
-    select('#particleText').position(width / 2 + 100, height - GUI_BOTTOM_HEIGHT + 20);
-    select('#eFieldButtonText').position(width / 2 - 550, height - GUI_BOTTOM_HEIGHT + 20);
-  }
+    // Trzecia kolumna
+    select('#tempText').position(CENTER_X - 150, BASE_Y + 10);
+    tempSlider.position(CENTER_X - 150, BASE_Y + 45); 
+    
+    // Czwarta kolumna
+    select('#particleText').position(CENTER_X + 100, BASE_Y + 10);
+    particleCountInput.position(CENTER_X + 100, BASE_Y + 45);
+    
+    // Piąta kolumna
+    select('#applyButton').position(CENTER_X + 230, BASE_Y + 45);
+    
+    // Tekst szumu (niżej)
+    select('#noiseText').position(CENTER_X - 150, BASE_Y + 100); // +100
+  }
 }
 
 function initializeElectrons() {
@@ -282,16 +293,13 @@ function initializeIons() {
 function draw() {
   background(COLOR_BACKGROUND); 
     
-  // --- 1. Rysowanie Obszaru GUI (Kontroli) ---
   drawGUIArea();
 
   // --- 2. Rysowanie Obszaru Symulacji (Metal) ---
   
-  // Wytłaczana obwódka
   fill(COLOR_METAL); 
   rect(SIM_AREA_START_X, SIM_AREA_START_Y, SIM_AREA_WIDTH, SIM_AREA_HEIGHT);
   
-  // Aktualizacja i rysowanie Jonów
   for (let ion of ions) {
       ion.update(); 
       ion.display(); 
@@ -327,7 +335,7 @@ function drawSideInfo() {
     fill(COLOR_TEXT);
     noStroke();
     
-    // Duży napis "Metal"
+    // Duży napis
     textAlign(CENTER, CENTER);
     textSize(36);
     text('Model Przewodnictwa Drudego', width / 2, SIM_AREA_START_Y - 30); 
@@ -335,45 +343,45 @@ function drawSideInfo() {
     // Lewa strona (liczniki)
     textAlign(RIGHT, TOP);
     textSize(20);
-    text('N_LEFT:', SIM_AREA_START_X - 20, SIM_AREA_START_Y + 100);
+    text('Liczba (Lewa):', SIM_AREA_START_X - 20, SIM_AREA_START_Y + 100);
     textSize(36);
-    text(`${electrons_left_side}`, SIM_AREA_START_X - 20, SIM_AREA_START_Y + 130);
+    text(`${electrons_left_side}`, SIM_AREA_START_X - 20, SIM_AREA_START_Y + 135); // +135
     
     // Prawa strona (liczniki)
     textAlign(LEFT, TOP);
     textSize(20);
-    text('N_RIGHT:', SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 100);
+    text('Liczba (Prawa):', SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 100);
     textSize(36);
-    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 130);
+    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 135); // +135
     
     // Wizualizacja prądu/dryfu na dole
     textAlign(LEFT, TOP);
     textSize(16);
     fill(COLOR_ELECTRON); 
     text(
-        `Drift Velocity vx: ${average_drift_velocity.toFixed(3)}`,
+        `Prędkość Dryfu vx: ${average_drift_velocity.toFixed(3)}`,
         SIM_AREA_START_X,
         SIM_AREA_START_Y + SIM_AREA_HEIGHT + 30
     );
-    
-    // Wskaźnik temperatury
-    fill(COLOR_ION); 
-    text(
-        `Tau (Relaxation Time): ${TAU} | Ion Noise: ${THERMAL_NOISE_MULTIPLIER}`,
-        SIM_AREA_START_X,
-        SIM_AREA_START_Y + SIM_AREA_HEIGHT + 60
-    );
+    
+    // Wskaźnik temperatury
+    fill(COLOR_ION); 
+    text(
+        `Czas Relaksacji (Tau): ${TAU} | Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`,
+        SIM_AREA_START_X,
+        SIM_AREA_START_Y + SIM_AREA_HEIGHT + 60
+    );
 }
 
 function drawEFieldIndicator() {
   const cx = SIM_AREA_START_X + SIM_AREA_WIDTH - 100;
-  const cy = SIM_AREA_START_Y + 30; // W górnym prawym rogu metalu
+  const cy = SIM_AREA_START_Y + 30; 
 
   stroke(COLOR_ACCENT);
   strokeWeight(3);
   fill(COLOR_ACCENT);
- 
-  // Rysowanie wektora Pola E
+ 
+  // Rysowanie wektora Pola E
   const arrow_magnitude = E_FIELD_X * 50; 
   const endX = cx + arrow_magnitude;
   const endY = cy + E_FIELD_Y * 50;
@@ -383,7 +391,7 @@ function drawEFieldIndicator() {
   push();
   translate(endX, endY);
   rotate(atan2(endY - cy, endX - cx));
-  triangle(0, 0, -8, 4, -8, -4); // Większa strzałka
+  triangle(0, 0, -8, 4, -8, -4); 
   pop();
 
   noStroke();
@@ -414,137 +422,132 @@ function createGUI() {
     height: 8px;
     border-radius: 4px;
   `;
-  
-  const BUTTON_STYLE = `
-    background: ${COLOR_ION};
-    color: ${COLOR_BACKGROUND};
-    border: none;
-    padding: 10px 15px;
-    font-size: 14px;
-    cursor: pointer;
-    width: 120px;
-    font-weight: bold;
-  `;
-  
-  // Zmienne do centralnego pozycjonowania
-  const BASE_Y = height - GUI_BOTTOM_HEIGHT + 20;
-  const COL_GAP = 250;
-  const CENTER_X = width / 2;
-  
-  let x_pos = CENTER_X - 550; // Początkowa pozycja na lewo
-  
-  // Funkcja pomocnicza do tworzenia P
-  const createPStyled = (content, id, x, y) => {
-    return createP(`<strong>${content}</strong>`)
-      .position(x, y)
-      .style(`color: ${COLOR_TEXT}; font-size: 16px;`)
-      .id(id);
-  };
-  
-  // --- 1. Kontrola Pola E (Przycisk ON/OFF) ---
-  createPStyled('POLE E:', 'eFieldButtonText', x_pos, BASE_Y);
-  eFieldButton = createButton('Toggle E Field')
-    .position(x_pos, BASE_Y + 50)
-    .mousePressed(toggleEField)
-    .style(BUTTON_STYLE)
-    .style(`background: ${E_FIELD_X !== 0 ? COLOR_ACCENT : COLOR_ION}`);
-  
-  x_pos += COL_GAP - 100; // Dostosowanie odstępu
-  
+  
+  const BUTTON_STYLE = `
+    background: ${COLOR_ION};
+    color: ${COLOR_BACKGROUND};
+    border: none;
+    padding: 10px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    width: 120px;
+    font-weight: bold;
+  `;
+  
+  // Zmienne do centralnego pozycjonowania
+  const BASE_Y = height - GUI_BOTTOM_HEIGHT + 20;
+  const CENTER_X = width / 2;
+  
+  let x_pos = CENTER_X - 550; 
+  
+  // Funkcja pomocnicza do tworzenia P
+  const createPStyled = (content, id, x, y) => {
+    return createP(`<strong>${content}</strong>`)
+      .position(x, y)
+      .style(`color: ${COLOR_TEXT}; font-size: 16px;`)
+      .id(id);
+  };
+  
+  // --- 1. Kontrola Pola E (Przycisk ON/OFF) ---
+  createPStyled('Pole Elektryczne:', 'eFieldButtonText', x_pos, BASE_Y + 10);
+  eFieldButton = createButton('Przełącz E')
+    .position(x_pos, BASE_Y + 45)
+    .mousePressed(toggleEField)
+    .style(BUTTON_STYLE)
+    .style(`background: ${E_FIELD_X !== 0 ? COLOR_ACCENT : COLOR_ION}`);
+  
+  x_pos += 150; 
+  
   // --- 2. Kontrola Wartości Pola E (Slider) ---
-  textEField = createPStyled('Wartość E (Vx):', 'eFieldText', x_pos, BASE_Y);
-  eFieldSlider = createSlider(-0.5, 0.5, E_FIELD_X, 0.01)
-    .position(x_pos, BASE_Y + 50)
+  createPStyled('Wartość Pola E (Vx):', 'eFieldText', x_pos, BASE_Y + 10);
+  eFieldSlider = createSlider(-0.5, 0.5, 0.0, 0.01) // Używamy 0.0 jako początkowej wartości
+    .position(x_pos, BASE_Y + 45)
     .style(SLIDER_STYLE)
     .input(updateEField);
   
-  x_pos += COL_GAP;
+  x_pos += 250;
   
   // --- 3. Kontrola Temperatury (TAU) ---
-  createPStyled('Czas Relaksacji (τ):', 'tempText', x_pos, BASE_Y);
+  createPStyled('Czas Relaksacji (τ):', 'tempText', x_pos, BASE_Y + 10);
   tempSlider = createSlider(5, 50, TAU, 1) 
-    .position(x_pos, BASE_Y + 50)
+    .position(x_pos, BASE_Y + 45)
     .style(SLIDER_STYLE)
     .input(updateTemperature);
   
-  x_pos += COL_GAP;
+  x_pos += 250;
 
   // --- 4. Kontrola Liczby Elektronów ---
-  createPStyled('Liczba Elektronów:', 'particleText', x_pos, BASE_Y);
+  createPStyled('Liczba Elektronów (N):', 'particleText', x_pos, BASE_Y + 10);
   particleCountInput = createInput(N_PARTICLES.toString(), 'number')
-    .position(x_pos, BASE_Y + 50)
+    .position(x_pos, BASE_Y + 45)
     .style(INPUT_STYLE);
 
   x_pos += 150;
 
   // --- 5. Przycisk Zastosuj ---
   createButton('Zastosuj').id('applyButton')
-    .position(x_pos, BASE_Y + 50)
-    .mousePressed(updateParticleCount)
-    .style(BUTTON_STYLE)
-    .style('background', COLOR_ION);
+    .position(x_pos, BASE_Y + 45)
+    .mousePressed(updateParticleCount)
+    .style(BUTTON_STYLE)
+    .style('background', COLOR_ION);
+    
+  // Inicjalizacja tekstu na dole (Wartości dynamiczne)
+  createPStyled(`Szum E: ${ELECTRON_THERMAL_NOISE.toFixed(3)} | Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`, 
+                 'noiseText', CENTER_X - 150, BASE_Y + 100)
+    .style('font-size', '14px');
     
-  // Inicjalizacja tekstu na dole (Wartości dynamiczne)
-  createPStyled(`Noise E: ${ELECTRON_THERMAL_NOISE.toFixed(3)} | Noise Ion: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`, 
-                 'noiseText', CENTER_X - 150, BASE_Y + 100)
-    .style('font-size', '14px');
+    // Konieczne jest wywołanie defineLayout() ponownie po utworzeniu elementów,
+    // aby pozycje były poprawne od razu
+    defineLayout(); 
 }
 
 function drawGUIArea() {
   // Tło dla GUI
   fill(COLOR_BACKGROUND);
   rect(0, 0, width, GUI_TOP_HEIGHT);
-  rect(0, height - GUI_BOTTOM_HEIGHT, width, GUI_BOTTOM_HEIGHT);
+  rect(0, height - GUI_BOTTOM_HEIGHT, width, GUI_BOTTOM_HEIGHT);
   
   // Podświetlanie przycisku E Field
   eFieldButton.style('background', E_FIELD_X !== 0 ? COLOR_ACCENT : COLOR_ION);
-  eFieldButton.html(E_FIELD_X !== 0 ? 'E Field (ON)' : 'E Field (OFF)');
+  eFieldButton.html(E_FIELD_X !== 0 ? 'POLE E (WŁ.)' : 'POLE E (WYŁ.)');
 
   // Aktualizacja tekstu GUI
-  select('#eFieldText').html(`Wartość E (Vx): ${eFieldSlider.value().toFixed(2)}`);
+  select('#eFieldText').html(`Wartość Pola E (Vx): ${eFieldSlider.value().toFixed(2)}`);
   select('#tempText').html(`Czas Relaksacji (τ): ${TAU}`);
-  
-  // Zmiana stałych szumu w zależności od TAU (symulacja temperatury)
-  // Wprowadzamy prostą relację odwrotną między TAU (czasem relaksacji) a szumem termicznym
-  const new_tau = tempSlider.value();
-  const max_tau = 50;
-  const min_tau = 5;
-  const noise_range_E = 0.1;
-  const noise_range_I = 0.003;
-  
-  // Normalizacja TAU na zakres [0, 1] (0 to max temp, 1 to min temp)
-  const normalized_temp = map(new_tau, min_tau, max_tau, 1, 0); 
-  
-  // Im niższe TAU, tym wyższa temperatura i wyższy szum
-  ELECTRON_THERMAL_NOISE = 0.01 + normalized_temp * noise_range_E;
-  THERMAL_NOISE_MULTIPLIER = 0.0005 + normalized_temp * noise_range_I;
-  TAU = new_tau;
+  
+  const new_tau = tempSlider.value();
+  const max_tau = 50;
+  const min_tau = 5;
+  const noise_range_E = 0.1;
+  const noise_range_I = 0.003;
+  
+  const normalized_temp = map(new_tau, min_tau, max_tau, 1, 0); 
+  
+  ELECTRON_THERMAL_NOISE = 0.01 + normalized_temp * noise_range_E;
+  THERMAL_NOISE_MULTIPLIER = 0.0005 + normalized_temp * noise_range_I;
+  TAU = new_tau;
 
-  select('#noiseText').html(`Noise E: ${ELECTRON_THERMAL_NOISE.toFixed(3)} | Noise Ion: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`);
+  select('#noiseText').html(`Szum E: ${ELECTRON_THERMAL_NOISE.toFixed(3)} | Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`);
 }
 
 function toggleEField() {
-    // Włączenie/wyłączenie pola z użyciem wartości ze slidera
-    if (E_FIELD_X === 0) {
-        // Aktywacja pola z wartością slidera (lub domyślną)
-        current_e_field = eFieldSlider.value();
-        if (abs(current_e_field) < 0.01) current_e_field = 0.5; 
-        E_FIELD_X = current_e_field;
-    } else {
-        // Wyłączenie pola
-        E_FIELD_X = 0;
-    }
+    if (E_FIELD_X === 0) {
+        current_e_field = eFieldSlider.value();
+        if (abs(current_e_field) < 0.01) current_e_field = 0.5; 
+        E_FIELD_X = current_e_field;
+    } else {
+        E_FIELD_X = 0;
+    }
 }
 
 function updateEField() {
-    // Jeśli pole jest aktywne, zmień jego wartość natychmiast
-    if (E_FIELD_X !== 0) {
-        E_FIELD_X = eFieldSlider.value();
-    }
+    if (E_FIELD_X !== 0) {
+        E_FIELD_X = eFieldSlider.value();
+    }
 }
 
 function updateTemperature() {
-    // TAU jest bezpośrednio odczytywane w draw() i jest powiązane z szumem
+    // TAU jest aktualizowane w drawGUIArea
 }
 
 function updateParticleCount() {
