@@ -90,7 +90,7 @@ class Ion {
         this.x_current += this.vx_thermal * dt;
         this.y_current += this.vy_thermal * dt;
         
-        // ZMIANA: Ograniczenie pozycji jonu do granic obszaru symulacji
+        // Ograniczenie pozycji jonu do granic obszaru symulacji
         const MARGIN = 1.0; 
         this.x_current = constrain(this.x_current, MARGIN, L_GRID_WIDTH - MARGIN);
         this.y_current = constrain(this.y_current, MARGIN, L_GRID_HEIGHT - MARGIN);
@@ -216,7 +216,15 @@ class Electron {
 
 // --- FUNKCJE SETUP I RYSOWANIE ---
 
+function setupPageStyles() {
+  // DODANE: Zerowanie marginesów i ukrywanie przepełnienia, aby wyeliminować paski przewijania
+  select('body').style('margin', '0');
+  select('body').style('padding', '0');
+  select('body').style('overflow', 'hidden'); 
+}
+
 function setup() {
+  setupPageStyles(); 
   createCanvas(windowWidth, windowHeight);
   textFont('Arial, sans-serif'); 
   defineLayout();
@@ -234,7 +242,8 @@ function windowResized() {
 }
 
 function defineLayout() {
-  const MARGIN_X = 150; 
+  // Używamy zwiększonego MARGIN_X=180
+  const MARGIN_X = 180; 
   const MARGIN_Y = 20;
 
   SIM_AREA_START_X = MARGIN_X;
@@ -248,7 +257,7 @@ function defineLayout() {
   L_GRID_WIDTH = floor(SIM_AREA_WIDTH / CELL_SIZE);
   L_GRID_HEIGHT = floor(SIM_AREA_HEIGHT / CELL_SIZE);
   
-  // ZMIANA: Repozycjonowanie elementów GUI po zmianie rozmiaru
+  // Repozycjonowanie elementów GUI po zmianie rozmiaru
   const BASE_Y = height - GUI_BOTTOM_HEIGHT + 20;
   const CENTER_X = width / 2;
   
@@ -287,11 +296,14 @@ function initializeElectrons() {
 function initializeIons() {
   ions = [];
   const ION_SPACING = 12; 
-  for (let i = 0; i < L_GRID_WIDTH; i += ION_SPACING) {
-    for (let j = 0; j < L_GRID_HEIGHT; j += ION_SPACING) {
-      ions.push(new Ion(i + ION_SPACING / 2, j + ION_SPACING / 2));
-    }
-  }
+    const START_MARGIN = ION_SPACING / 4;
+    
+    // Zapewnienie, że jony są generowane w całym zakresie
+    for (let i = START_MARGIN; i < L_GRID_WIDTH - START_MARGIN; i += ION_SPACING) {
+        for (let j = START_MARGIN; j < L_GRID_HEIGHT - START_MARGIN; j += ION_SPACING) {
+            ions.push(new Ion(i, j));
+        }
+    }
 }
 
 function draw() {
@@ -354,9 +366,9 @@ function drawSideInfo() {
     // Prawa strona (liczniki)
     textAlign(LEFT, TOP);
     textSize(20);
-    text('Liczba (Prawa):', SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 100);
+    text('Liczba (Prawa):', SIM_AREA_START_X + SIM_AREA_WIDTH + 50, SIM_AREA_START_Y + 100); 
     textSize(36);
-    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 135); 
+    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 50, SIM_AREA_START_Y + 135); 
     
     // Wizualizacja prądu/dryfu na dole
     textAlign(LEFT, TOP);
@@ -434,7 +446,7 @@ function createGUI() {
     padding: 10px 15px;
     font-size: 14px;
     cursor: pointer;
-    width: 120px;
+    /* Usunięto width: 120px; */
     font-weight: bold;
   `;
   
