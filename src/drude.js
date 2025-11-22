@@ -10,19 +10,17 @@ let N_PARTICLES = 300; // Liczba symulowanych elektronów
 const dt = 0.1; // Krok czasowy całkowania
 const ELECTRON_CHARGE = -1.0;
 const ELECTRON_MASS = 1.0;
-let TAU = 20; // CZAS RELAKSACJI (TEMPERATURA)
+let TAU = 20; // CZAS RELAKSACJI (TAU)
 
-// ZMIANA: NOWE, POPRAWIONE STAŁE DLA GĘSTEJ STRUKTURY I SŁABSZYCH DRGAŃ
-const ION_SPRING_CONSTANT = 2.0; // Zwiększona siła do "trzymania" jonu w miejscu (wcześniej 0.05 / 0.5)
-const DAMPING_FACTOR = 0.98; // Tłumienie drgań jonów
-const THERMAL_NOISE_MULTIPLIER = 0.002; // Mniejszy szum dla jonów (wcześniej 0.01)
-const COLLISION_ENERGY_TRANSFER = 0.5; // Współczynnik straty prędkości elektronu przy zderzeniu
+// ZMIANA: ZMNIEJSZONY SZUM TERMICZNY
+const ION_SPRING_CONSTANT = 2.0; 
+const DAMPING_FACTOR = 0.98; 
+const THERMAL_NOISE_MULTIPLIER = 0.0005; // OGRANICZONE DRGANIA JONÓW
+const COLLISION_ENERGY_TRANSFER = 0.5; 
 
-// ZMIANA: ZMNIEJSZONA PRĘDKOŚĆ CHAOTYCZNA ELEKTRONÓW
+// Parametry elektronów
 const ELECTRON_INITIAL_SPEED = 3.0; 
-
-// ZMIANA: ZWIĘKSZONE POLE E, ABY DOMINOWAŁO
-let E_FIELD_X = 0.5; 
+let E_FIELD_X = 0.0; 
 let E_FIELD_Y = 0.0;
 
 let electrons = [];
@@ -34,66 +32,68 @@ let SIM_AREA_START_X;
 let SIM_AREA_START_Y;
 let SIM_AREA_WIDTH;
 let SIM_AREA_HEIGHT;
+const GUI_TOP_HEIGHT = 100; // Stała wysokość panelu sterowania
 
 // Elementy GUI
 let eFieldSlider;
 let tempSlider;
 let particleCountInput;
+let textEField;
+let textTemp;
+
 
 // --- KLASA ION (Wibracje Termiczne) ---
 
 class Ion {
-    constructor(x, y) {
-        this.x_init = x; 
-        this.y_init = y;
-        this.x_current = x; 
-        this.y_current = y;
-        this.vx_thermal = 0;
-        this.vy_thermal = 0;
-    }
+    constructor(x, y) {
+        this.x_init = x; 
+        this.y_init = y;
+        this.x_current = x; 
+        this.y_current = y;
+        this.vx_thermal = 0;
+        this.vy_thermal = 0;
+    }
 
-    update() {
-        // Dodanie małego szumu termicznego
-        this.vx_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
-        this.vy_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
-        
-        // Obliczenie siły przywracającej (Prawo Hooke'a)
-        const dx = this.x_current - this.x_init;
-        const dy = this.y_current - this.y_init;
-        
-        // Użycie ZWIĘKSZONEJ SIŁY PRZYWRACAJĄCEJ
-        const ax = -ION_SPRING_CONSTANT * dx;
-        const ay = -ION_SPRING_CONSTANT * dy;
+    update() {
+        // Dodanie małego szumu termicznego
+        this.vx_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
+        this.vy_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
+        
+        // Obliczenie siły przywracającej (Prawo Hooke'a)
+        const dx = this.x_current - this.x_init;
+        const dy = this.y_current - this.y_init;
+        
+        const ax = -ION_SPRING_CONSTANT * dx;
+        const ay = -ION_SPRING_CONSTANT * dy;
 
-        // Całkowanie Eulera
-        this.vx_thermal += ax * dt;
-        this.vy_thermal += ay * dt;
-        
-        // Tłumienie prędkości
-        this.vx_thermal *= DAMPING_FACTOR;
-        this.vy_thermal *= DAMPING_FACTOR;
+        // Całkowanie Eulera
+        this.vx_thermal += ax * dt;
+        this.vy_thermal += ay * dt;
+        
+        // Tłumienie prędkości
+        this.vx_thermal *= DAMPING_FACTOR;
+        this.vy_thermal *= DAMPING_FACTOR;
 
-        // Aktualizacja pozycji chwilowej
-        this.x_current += this.vx_thermal * dt;
-        this.y_current += this.vy_thermal * dt;
-    }
+        // Aktualizacja pozycji chwilowej
+        this.x_current += this.vx_thermal * dt;
+        this.y_current += this.vy_thermal * dt;
+    }
 
-    display() {
-        const ION_SIZE = CELL_SIZE * 1.5; 
-        fill(0, 150, 255); // Niebieski
-        noStroke();
-        
-        const drawX = this.x_current * CELL_SIZE + SIM_AREA_START_X;
-        const drawY = this.y_current * CELL_SIZE + SIM_AREA_START_Y;
-        
-        ellipse(drawX, drawY, ION_SIZE, ION_SIZE);
-        
-        // Dodanie znaku "+" do jonu
-        fill(255); 
-        textSize(CELL_SIZE * 1.5);
-        textAlign(CENTER, CENTER);
-        text('+', drawX, drawY);
-    }
+    display() {
+        const ION_SIZE = CELL_SIZE * 1.5; 
+        fill(0, 150, 255); 
+        noStroke();
+        
+        const drawX = this.x_current * CELL_SIZE + SIM_AREA_START_X;
+        const drawY = this.y_current * CELL_SIZE + SIM_AREA_START_Y;
+        
+        ellipse(drawX, drawY, ION_SIZE, ION_SIZE);
+        
+        fill(255); 
+        textSize(CELL_SIZE * 1.5);
+        textAlign(CENTER, CENTER);
+        text('+', drawX, drawY);
+    }
 }
 
 
@@ -103,15 +103,33 @@ class Electron {
   constructor() {
     this.x = random(L_GRID_WIDTH);
     this.y = random(L_GRID_HEIGHT);
-    // Użycie ZMNIEJSZONEJ prędkości początkowej
-    this.vx = random(-ELECTRON_INITIAL_SPEED, ELECTRON_INITIAL_SPEED); 
-    this.vy = random(-ELECTRON_INITIAL_SPEED, ELECTRON_INITIAL_SPEED);
+    
+    // ZMIANA: Zapewnienie minimalnej prędkości początkowej (ruch chaotyczny)
+    const MIN_INITIAL_SPEED = 1.0; 
+    const max_speed = ELECTRON_INITIAL_SPEED;
+
+    // Losowanie prędkości w zakresie [1.0, 3.0]
+    const speed = random(MIN_INITIAL_SPEED, max_speed); 
+    
+    // Losowanie pełnego kąta (kierunku)
+    const angle = random(TWO_PI); 
+    
+    this.vx = speed * cos(angle);
+    this.vy = speed * sin(angle);
   }
 
   update() {
     // 1. Obliczanie siły z pola elektrycznego
-    const ax = (ELECTRON_CHARGE * E_FIELD_X) / ELECTRON_MASS;
-    const ay = (ELECTRON_CHARGE * E_FIELD_Y) / ELECTRON_MASS;
+    const Fx_E = ELECTRON_CHARGE * E_FIELD_X;
+    const Fy_E = ELECTRON_CHARGE * E_FIELD_Y;
+
+    // Człon Relaksacyjny Drudego (Ograniczenie przyspieszenia)
+    const Fx_relax = -(ELECTRON_MASS / TAU) * this.vx;
+    const Fy_relax = -(ELECTRON_MASS / TAU) * this.vy;
+
+    // Suma sił / masa = przyspieszenie
+    const ax = (Fx_E + Fx_relax) / ELECTRON_MASS;
+    const ay = (Fy_E + Fy_relax) / ELECTRON_MASS;
 
     // 2. Całkowanie Eulera
     this.vx += ax * dt;
@@ -166,16 +184,15 @@ class Electron {
 
   display() {
     const ELECTRON_SIZE = CELL_SIZE * 0.8;
-    fill(255, 255, 0); // Żółty
+    fill(255, 255, 0); 
     noStroke();
-    
-    const drawX = this.x * CELL_SIZE + SIM_AREA_START_X;
-    const drawY = this.y * CELL_SIZE + SIM_AREA_START_Y;
-    
+    
+    const drawX = this.x * CELL_SIZE + SIM_AREA_START_X;
+    const drawY = this.y * CELL_SIZE + SIM_AREA_START_Y;
+    
     ellipse(drawX, drawY, ELECTRON_SIZE, ELECTRON_SIZE);
     
-    // Dodanie znaku "-" do elektronu
-    fill(0); // Czarny tekst
+    fill(0); 
     textSize(CELL_SIZE);
     textAlign(CENTER, CENTER);
     text('-', drawX, drawY);
@@ -201,11 +218,16 @@ function windowResized() {
 }
 
 function defineLayout() {
-  const GUI_WIDTH = 250;
-  SIM_AREA_START_X = GUI_WIDTH;
-  SIM_AREA_START_Y = 0;
-  SIM_AREA_WIDTH = width - GUI_WIDTH;
-  SIM_AREA_HEIGHT = height;
+  const MARGIN_X = 50; 
+  const MARGIN_Y = 20;
+
+  SIM_AREA_START_X = MARGIN_X;
+  SIM_AREA_START_Y = GUI_TOP_HEIGHT + MARGIN_Y; 
+  SIM_AREA_WIDTH = width - 2 * MARGIN_X;
+  SIM_AREA_HEIGHT = height - GUI_TOP_HEIGHT - 2 * MARGIN_Y; 
+
+  if (SIM_AREA_WIDTH < 100) SIM_AREA_WIDTH = 100;
+  if (SIM_AREA_HEIGHT < 100) SIM_AREA_HEIGHT = 100;
 
   L_GRID_WIDTH = floor(SIM_AREA_WIDTH / CELL_SIZE);
   L_GRID_HEIGHT = floor(SIM_AREA_HEIGHT / CELL_SIZE);
@@ -218,10 +240,9 @@ function initializeElectrons() {
   }
 }
 
-// ZMIANA: Implementacja GĘSTSZEJ SIATKI i użycie klasy Ion
 function initializeIons() {
   ions = [];
-  const ION_SPACING = 12; // ZMNIEJSZONY ODSTĘP dla gęstszej struktury
+  const ION_SPACING = 12; 
   for (let i = 0; i < L_GRID_WIDTH; i += ION_SPACING) {
     for (let j = 0; j < L_GRID_HEIGHT; j += ION_SPACING) {
       ions.push(new Ion(i + ION_SPACING / 2, j + ION_SPACING / 2));
@@ -241,10 +262,10 @@ function draw() {
   rect(SIM_AREA_START_X, SIM_AREA_START_Y, SIM_AREA_WIDTH, SIM_AREA_HEIGHT);
   
   // Aktualizacja i rysowanie Jonów
-  for (let ion of ions) {
-      ion.update(); // Aktualizacja drgań
-      ion.display(); // Rysowanie
-  }
+  for (let ion of ions) {
+      ion.update(); 
+      ion.display(); 
+  }
 
   // Symulacja elektronów
   let total_vx = 0;
@@ -265,23 +286,24 @@ function draw() {
   noStroke();
   textSize(14);
   
+  // Wyświetlanie statystyk na dole obszaru symulacji
   text(
-    `Średnia prędkość dryfu vx: ${average_drift_velocity.toFixed(3)}`,
+    `Średnia prędkość dryfu vx: ${average_drift_velocity.toFixed(3)} [m/s]`,
     SIM_AREA_START_X + 10,
-    SIM_AREA_HEIGHT - 30
+    SIM_AREA_START_Y + SIM_AREA_HEIGHT - 30
   );
   
   text(
     `Liczba elektronów: ${N_PARTICLES}`,
     SIM_AREA_START_X + 10,
-    SIM_AREA_HEIGHT - 10
+    SIM_AREA_START_Y + SIM_AREA_HEIGHT - 10
   );
 
 }
 
 function drawEFieldIndicator() {
-  const cx = SIM_AREA_START_X + 50;
-  const cy = 30;
+  const cx = SIM_AREA_START_X + SIM_AREA_WIDTH - 150;
+  const cy = SIM_AREA_START_Y + 30;
   const arrow_length = 30;
 
   stroke(255, 100, 100);
@@ -317,61 +339,56 @@ function createGUI() {
   `;
   
   const PADDING = 10;
-  let y_pos = PADDING;
+  let x_pos = PADDING;
+  const y_pos = PADDING; 
 
   // --- 1. Kontrola Pola Elektrycznego ---
   
-  createP('**Pole Elektryczne E (Vx)**').position(PADDING, y_pos).style(style);
-  y_pos += 40;
-  
+  createP('**Pole E (Vx)**').position(x_pos, y_pos).style(style);
   eFieldSlider = createSlider(-0.5, 0.5, E_FIELD_X, 0.01)
-    .position(PADDING, y_pos)
-    .style('width', '200px')
+    .position(x_pos, y_pos + 40)
+    .style('width', '150px')
     .input(updateEField);
-  y_pos += 40;
   
-  createP('**Współczynnik Temperatury (1/τ)**').position(PADDING, y_pos).style(style);
-  y_pos += 40;
+  textEField = createP(`E_FIELD_X: ${E_FIELD_X.toFixed(2)}`).position(x_pos, 60).style('color', 'white');
+  
+  x_pos += 200;
   
   // --- 2. Kontrola Temperatury (TAU) ---
   
+  createP('**Współczynnik Relaksacji (τ)**').position(x_pos, y_pos).style(style);
   tempSlider = createSlider(5, 50, TAU, 1) 
-    .position(PADDING, y_pos)
-    .style('width', '200px')
+    .position(x_pos, y_pos + 40)
+    .style('width', '150px')
     .input(updateTemperature);
-  y_pos += 40;
+  
+  textTemp = createP(`TAU (τ): ${TAU}`).position(x_pos, 60).style('color', 'white');
+
+  x_pos += 200;
 
   // --- 3. Kontrola Liczby Elektronów ---
   
-  createP('**Liczba Elektronów**').position(PADDING, y_pos).style(style);
-  y_pos += 40;
-  
+  createP('**Liczba Elektronów**').position(x_pos, y_pos).style(style);
   particleCountInput = createInput(N_PARTICLES.toString(), 'number')
-    .position(PADDING, y_pos)
+    .position(x_pos, y_pos + 40)
     .style('width', '100px')
     .style('background', '#333')
     .style('color', 'white')
     .style(style);
-  y_pos += 40;
-  
-  createButton('Zastosuj Nową Liczbę').position(PADDING, y_pos).mousePressed(updateParticleCount).style(style);
+
+  x_pos += 150;
+
+  createButton('Zastosuj').position(x_pos, y_pos + 40).mousePressed(updateParticleCount).style(style);
 }
 
 function drawGUIArea() {
-  // Tło dla kolumny GUI
+  // Tło dla górnego panelu GUI
   fill(30, 30, 30);
-  rect(0, 0, SIM_AREA_START_X, height);
+  rect(0, 0, width, GUI_TOP_HEIGHT);
   
-  // Wyświetlanie aktualnych wartości z GUI
-  fill(255);
-  noStroke();
-  textSize(12);
-  
-  // Wartość E Field
-  text(`E_FIELD_X: ${E_FIELD_X.toFixed(2)}`, 10, 85);
-  
-  // Wartość temperatury (TAU)
-  text(`TAU (τ): ${TAU} (Relaksacja)`, 10, 165);
+  // Aktualizacja tekstu
+  textEField.html(`E_FIELD_X: ${E_FIELD_X.toFixed(2)}`);
+  textTemp.html(`TAU (τ): ${TAU}`);
 }
 
 function updateEField() {
