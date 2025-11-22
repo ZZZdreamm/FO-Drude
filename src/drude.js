@@ -1,18 +1,18 @@
 // --- ZMIENNE GLOBALNE I KONFIGURACJA GUI ---
 
-let L_GRID_WIDTH;  // Szerokość siatki w jednostkach symulacji
-let L_GRID_HEIGHT; // Wysokość siatki w jednostkach symulacji
-const CELL_SIZE = 15; // Rozmiar komórki na ekranie
+let L_GRID_WIDTH;  
+let L_GRID_HEIGHT; 
+const CELL_SIZE = 15; 
 
-let N_PARTICLES = 300; // Liczba symulowanych elektronów
+let N_PARTICLES = 300; 
 
 // Parametry fizyczne
-const dt = 0.1; // Krok czasowy całkowania
+const dt = 0.1; 
 const ELECTRON_CHARGE = -1.0;
 const ELECTRON_MASS = 1.0;
-let TAU = 20; // CZAS RELAKSACJI (TAU)
+let TAU = 10; 
 
-// ZMIANA: ZMNIEJSZONY SZUM TERMICZNY
+// Parametry jonów
 const ION_SPRING_CONSTANT = 2.0; 
 const DAMPING_FACTOR = 0.98; 
 const THERMAL_NOISE_MULTIPLIER = 0.0005; // OGRANICZONE DRGANIA JONÓW
@@ -20,6 +20,7 @@ const COLLISION_ENERGY_TRANSFER = 0.5;
 
 // Parametry elektronów
 const ELECTRON_INITIAL_SPEED = 3.0; 
+const ELECTRON_THERMAL_NOISE = 0.05; 
 let E_FIELD_X = 0.0; 
 let E_FIELD_Y = 0.0;
 
@@ -27,12 +28,18 @@ let electrons = [];
 let ions = [];
 let average_drift_velocity = 0;
 
+// ZMIANA: Zmienne do śledzenia liczby elektronów i ustawienia układu
+let electrons_left_side = 0;
+let electrons_right_side = 0;
+const BOUNDARY_RATIO = 0.5; 
+
 // ZMIENNE DO STEROWANIA OBSZAREM WIZUALIZACJI
 let SIM_AREA_START_X;
 let SIM_AREA_START_Y;
 let SIM_AREA_WIDTH;
 let SIM_AREA_HEIGHT;
-const GUI_TOP_HEIGHT = 100; // Stała wysokość panelu sterowania
+const GUI_TOP_HEIGHT = 50; 
+const GUI_BOTTOM_HEIGHT = 150; // Nowe miejsce na GUI na dole
 
 // Elementy GUI
 let eFieldSlider;
@@ -42,7 +49,7 @@ let textEField;
 let textTemp;
 
 
-// --- KLASA ION (Wibracje Termiczne) ---
+// --- KLASA ION (Bez zmian) ---
 
 class Ion {
     constructor(x, y) {
@@ -55,33 +62,26 @@ class Ion {
     }
 
     update() {
-        // Dodanie małego szumu termicznego
         this.vx_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
         this.vy_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
         
-        // Obliczenie siły przywracającej (Prawo Hooke'a)
         const dx = this.x_current - this.x_init;
         const dy = this.y_current - this.y_init;
-        
         const ax = -ION_SPRING_CONSTANT * dx;
         const ay = -ION_SPRING_CONSTANT * dy;
 
-        // Całkowanie Eulera
         this.vx_thermal += ax * dt;
         this.vy_thermal += ay * dt;
-        
-        // Tłumienie prędkości
         this.vx_thermal *= DAMPING_FACTOR;
         this.vy_thermal *= DAMPING_FACTOR;
 
-        // Aktualizacja pozycji chwilowej
         this.x_current += this.vx_thermal * dt;
         this.y_current += this.vy_thermal * dt;
     }
 
     display() {
         const ION_SIZE = CELL_SIZE * 1.5; 
-        fill(0, 150, 255); 
+        fill(255, 0, 0); // ZMIANA: Czerwone jony, jak na nagraniu
         noStroke();
         
         const drawX = this.x_current * CELL_SIZE + SIM_AREA_START_X;
@@ -104,14 +104,10 @@ class Electron {
     this.x = random(L_GRID_WIDTH);
     this.y = random(L_GRID_HEIGHT);
     
-    // ZMIANA: Zapewnienie minimalnej prędkości początkowej (ruch chaotyczny)
     const MIN_INITIAL_SPEED = 1.0; 
     const max_speed = ELECTRON_INITIAL_SPEED;
 
-    // Losowanie prędkości w zakresie [1.0, 3.0]
     const speed = random(MIN_INITIAL_SPEED, max_speed); 
-    
-    // Losowanie pełnego kąta (kierunku)
     const angle = random(TWO_PI); 
     
     this.vx = speed * cos(angle);
@@ -119,29 +115,33 @@ class Electron {
   }
 
   update() {
-    // 1. Obliczanie siły z pola elektrycznego
+    // Siła od pola E
     const Fx_E = ELECTRON_CHARGE * E_FIELD_X;
     const Fy_E = ELECTRON_CHARGE * E_FIELD_Y;
 
-    // Człon Relaksacyjny Drudego (Ograniczenie przyspieszenia)
+    // Człon Relaksacyjny Drudego
     const Fx_relax = -(ELECTRON_MASS / TAU) * this.vx;
     const Fy_relax = -(ELECTRON_MASS / TAU) * this.vy;
 
-    // Suma sił / masa = przyspieszenie
+    // Przyspieszenie
     const ax = (Fx_E + Fx_relax) / ELECTRON_MASS;
     const ay = (Fy_E + Fy_relax) / ELECTRON_MASS;
 
-    // 2. Całkowanie Eulera
+    // Całkowanie
     this.vx += ax * dt;
     this.vy += ay * dt;
+
+    // Szum Termiczny (Model Langevina)
+    this.vx += random(-ELECTRON_THERMAL_NOISE, ELECTRON_THERMAL_NOISE);
+    this.vy += random(-ELECTRON_THERMAL_NOISE, ELECTRON_THERMAL_NOISE);
 
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     
-    // 3. Sprawdzanie zderzeń
+    // Zderzenia
     this.checkCollision(ions);
 
-    // 4. Warunki brzegowe (okresowe - torus)
+    // Warunki brzegowe (torus)
     this.x = (this.x + L_GRID_WIDTH) % L_GRID_WIDTH;
     this.y = (this.y + L_GRID_HEIGHT) % L_GRID_HEIGHT;
   }
@@ -168,11 +168,9 @@ class Electron {
             this.vx -= v_loss * normal_x;
             this.vy -= v_loss * normal_y;
             
-            // Przeniesienie energii do jonu
             ion.vx_thermal += v_loss * normal_x * 0.5;
             ion.vy_thermal += v_loss * normal_y * 0.5;
             
-            // Odsunięcie elektronu
             this.x += normal_x * 0.1;
             this.y += normal_y * 0.1;
             
@@ -184,7 +182,7 @@ class Electron {
 
   display() {
     const ELECTRON_SIZE = CELL_SIZE * 0.8;
-    fill(255, 255, 0); 
+    fill(0, 0, 255); // ZMIANA: Niebieskie elektrony, jak na nagraniu
     noStroke();
     
     const drawX = this.x * CELL_SIZE + SIM_AREA_START_X;
@@ -192,7 +190,7 @@ class Electron {
     
     ellipse(drawX, drawY, ELECTRON_SIZE, ELECTRON_SIZE);
     
-    fill(0); 
+    fill(255); // Biały znak minus
     textSize(CELL_SIZE);
     textAlign(CENTER, CENTER);
     text('-', drawX, drawY);
@@ -217,14 +215,15 @@ function windowResized() {
   initializeIons(); 
 }
 
+// ZMIANA: Modyfikacja układu na GUI na dole, szerokie marginesy na liczniki
 function defineLayout() {
-  const MARGIN_X = 50; 
+  const MARGIN_X = 150; 
   const MARGIN_Y = 20;
 
   SIM_AREA_START_X = MARGIN_X;
   SIM_AREA_START_Y = GUI_TOP_HEIGHT + MARGIN_Y; 
   SIM_AREA_WIDTH = width - 2 * MARGIN_X;
-  SIM_AREA_HEIGHT = height - GUI_TOP_HEIGHT - 2 * MARGIN_Y; 
+  SIM_AREA_HEIGHT = height - GUI_TOP_HEIGHT - GUI_BOTTOM_HEIGHT; 
 
   if (SIM_AREA_WIDTH < 100) SIM_AREA_WIDTH = 100;
   if (SIM_AREA_HEIGHT < 100) SIM_AREA_HEIGHT = 100;
@@ -252,13 +251,15 @@ function initializeIons() {
 
 function draw() {
   background(20); 
-
+    
   // --- 1. Rysowanie Obszaru GUI (Kontroli) ---
   drawGUIArea();
 
   // --- 2. Rysowanie Obszaru Symulacji (Metal) ---
   
-  fill(40, 40, 40); 
+  fill(180, 50, 50); // Czerwone tło symulacji jak na nagraniu
+  rect(SIM_AREA_START_X - 15, SIM_AREA_START_Y - 15, SIM_AREA_WIDTH + 30, SIM_AREA_HEIGHT + 30);
+  fill(80, 80, 80); // Szary kolor metalu
   rect(SIM_AREA_START_X, SIM_AREA_START_Y, SIM_AREA_WIDTH, SIM_AREA_HEIGHT);
   
   // Aktualizacja i rysowanie Jonów
@@ -267,56 +268,87 @@ function draw() {
       ion.display(); 
   }
 
+    // Resetowanie liczników
+    electrons_left_side = 0;
+    electrons_right_side = 0;
+
   // Symulacja elektronów
   let total_vx = 0;
+    const boundary_x = L_GRID_WIDTH * BOUNDARY_RATIO; // Środek logiczny
+
   for (let e of electrons) {
     e.update();
     e.display();
     total_vx += e.vx;
+    
+    // Liczenie elektronów po bokach
+    if (e.x < boundary_x) {
+        electrons_left_side++;
+    } else {
+        electrons_right_side++;
+    }
   }
 
   // Obliczenie średniej prędkości dryfu
   average_drift_velocity = total_vx / N_PARTICLES;
 
-  // --- 3. Wizualizacja Wyników w Obszarze Symulacji ---
-  
+  // --- 3. Wizualizacja Wyników i Statystyk ---
+  drawSideInfo();
   drawEFieldIndicator();
-
-  fill(255);
-  noStroke();
-  textSize(14);
-  
-  // Wyświetlanie statystyk na dole obszaru symulacji
-  text(
-    `Średnia prędkość dryfu vx: ${average_drift_velocity.toFixed(3)} [m/s]`,
-    SIM_AREA_START_X + 10,
-    SIM_AREA_START_Y + SIM_AREA_HEIGHT - 30
-  );
-  
-  text(
-    `Liczba elektronów: ${N_PARTICLES}`,
-    SIM_AREA_START_X + 10,
-    SIM_AREA_START_Y + SIM_AREA_HEIGHT - 10
-  );
-
 }
 
+// ZMIANA: Rysowanie informacji bocznych i tytułu
+function drawSideInfo() {
+    fill(255);
+    noStroke();
+    textSize(18);
+    
+    // Duży napis "Metal"
+    textAlign(CENTER, CENTER);
+    textSize(36);
+    text('Metal', width / 2, SIM_AREA_START_Y - 30); 
+    
+    // Lewa strona
+    textAlign(RIGHT, TOP);
+    textSize(24);
+    text('Left Side Electrons:', SIM_AREA_START_X - 20, SIM_AREA_START_Y + 100);
+    textSize(36);
+    text(`${electrons_left_side}`, SIM_AREA_START_X - 20, SIM_AREA_START_Y + 130);
+    
+    // Prawa strona
+    textAlign(LEFT, TOP);
+    textSize(24);
+    text('Right Side Electrons:', SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 100);
+    textSize(36);
+    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 130);
+    
+    // Wizualizacja prądu/dryfu na dole
+    textAlign(LEFT, TOP);
+    textSize(16);
+    fill(255, 255, 0); // Kolor żółty dla dryftu
+    text(
+        `Average Drift Velocity: ${average_drift_velocity.toFixed(3)} [m/s]`,
+        SIM_AREA_START_X,
+        SIM_AREA_START_Y + SIM_AREA_HEIGHT + 30
+    );
+}
+
+// ZMIANA: Przeniesienie wskaźnika E-Field na dół
 function drawEFieldIndicator() {
   const cx = SIM_AREA_START_X + SIM_AREA_WIDTH - 150;
-  const cy = SIM_AREA_START_Y + 30;
-  const arrow_length = 30;
+  const cy = SIM_AREA_START_Y + SIM_AREA_HEIGHT + 100; // Pozycja na dole
 
   stroke(255, 100, 100);
   strokeWeight(2);
   fill(255, 100, 100);
-
-  // Rysowanie wektora pola E
-  const endX = cx + E_FIELD_X * arrow_length * 50;
-  const endY = cy + E_FIELD_Y * arrow_length * 50;
+ 
+ // ... rysowanie strzałki (bez zmian logiki) ...
+ 
+  const endX = cx + E_FIELD_X * 50;
+  const endY = cy + E_FIELD_Y * 50;
 
   line(cx, cy, endX, endY);
 
-  // Rysowanie grotu strzałki
   push();
   translate(endX, endY);
   rotate(atan2(endY - cy, endX - cx));
@@ -324,11 +356,12 @@ function drawEFieldIndicator() {
   pop();
 
   noStroke();
+  fill(255);
   text(`E = (${E_FIELD_X.toFixed(2)}, ${E_FIELD_Y.toFixed(2)})`, cx, cy - 10);
 }
 
 
-// --- FUNKCJE GUI ---
+// --- FUNKCJE GUI (Przeniesione na DÓŁ) ---
 
 function createGUI() {
   const style = `
@@ -340,7 +373,8 @@ function createGUI() {
   
   const PADDING = 10;
   let x_pos = PADDING;
-  const y_pos = PADDING; 
+  const y_start = height - GUI_BOTTOM_HEIGHT + 20; // Y-start na dole
+  let y_pos = y_start;
 
   // --- 1. Kontrola Pola Elektrycznego ---
   
@@ -350,19 +384,19 @@ function createGUI() {
     .style('width', '150px')
     .input(updateEField);
   
-  textEField = createP(`E_FIELD_X: ${E_FIELD_X.toFixed(2)}`).position(x_pos, 60).style('color', 'white');
+  textEField = createP(`E_FIELD_X: ${E_FIELD_X.toFixed(2)}`).position(x_pos, y_pos + 60).style('color', 'white');
   
   x_pos += 200;
   
   // --- 2. Kontrola Temperatury (TAU) ---
   
-  createP('**Współczynnik Relaksacji (τ)**').position(x_pos, y_pos).style(style);
+  createP('**Relaksacja (τ)**').position(x_pos, y_pos).style(style);
   tempSlider = createSlider(5, 50, TAU, 1) 
     .position(x_pos, y_pos + 40)
     .style('width', '150px')
     .input(updateTemperature);
   
-  textTemp = createP(`TAU (τ): ${TAU}`).position(x_pos, 60).style('color', 'white');
+  textTemp = createP(`TAU (τ): ${TAU}`).position(x_pos, y_pos + 60).style('color', 'white');
 
   x_pos += 200;
 
@@ -382,11 +416,14 @@ function createGUI() {
 }
 
 function drawGUIArea() {
-  // Tło dla górnego panelu GUI
+  // Tło dla górnego panelu (mniejsze)
   fill(30, 30, 30);
   rect(0, 0, width, GUI_TOP_HEIGHT);
+    
+  // Tło dla dolnego panelu GUI
+  rect(0, height - GUI_BOTTOM_HEIGHT, width, GUI_BOTTOM_HEIGHT);
   
-  // Aktualizacja tekstu
+  // Aktualizacja tekstu GUI
   textEField.html(`E_FIELD_X: ${E_FIELD_X.toFixed(2)}`);
   textTemp.html(`TAU (τ): ${TAU}`);
 }
