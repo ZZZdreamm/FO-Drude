@@ -581,7 +581,6 @@ function drawGUIArea() {
 function toggleEField() {
     if (E_FIELD_X === 0) {
         current_e_field = eFieldSlider.value();
-        if (abs(current_e_field) < 0.01) current_e_field = 0.5; 
         E_FIELD_X = current_e_field;
     } else {
         E_FIELD_X = 0;
