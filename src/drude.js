@@ -23,7 +23,7 @@ const ION_MAX_THERMAL_SPEED = 0.5; // NOWA STAŁA: Maksymalna prędkość termic
 
 // Parametry elektronów
 const ELECTRON_INITIAL_SPEED = 3.0; 
-let ELECTRON_THERMAL_NOISE = 0.05; 
+let ELECTRON_THERMAL_NOISE = 0.15; 
 let E_FIELD_X = 0.0; 
 let E_FIELD_Y = 0.0;
 
