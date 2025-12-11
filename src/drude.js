@@ -15,10 +15,11 @@ let E_FIELD_VALUE = 0.5;
 let current_e_field = 0.0; 
 
 // Parametry jonów
-const ION_SPRING_CONSTANT = 2.0; 
+const ION_SPRING_CONSTANT = 5.0; // Wzmocniona sprężystość
 const DAMPING_FACTOR = 0.98; 
 let THERMAL_NOISE_MULTIPLIER = 0.0005; 
 const COLLISION_ENERGY_TRANSFER = 0.5; 
+const ION_MAX_THERMAL_SPEED = 0.5; // NOWA STAŁA: Maksymalna prędkość termiczna jonu
 
 // Parametry elektronów
 const ELECTRON_INITIAL_SPEED = 3.0; 
@@ -54,11 +55,11 @@ let eFieldButton;
 
 // --- PALETA KOLORÓW ---
 const COLOR_BACKGROUND = '#1C1C1E'; 
-const COLOR_METAL = '#33333A';     
-const COLOR_ION = '#00AEEF';       
-const COLOR_ELECTRON = '#FFC300';  
-const COLOR_ACCENT = '#FF4500';    
-const COLOR_TEXT = '#EAEAEA';      
+const COLOR_METAL = '#33333A';       
+const COLOR_ION = '#00AEEF';         
+const COLOR_ELECTRON = '#FFC300';   
+const COLOR_ACCENT = '#FF4500';      
+const COLOR_TEXT = '#EAEAEA';       
 
 
 // --- KLASA ION ---
@@ -74,30 +75,44 @@ class Ion {
     }
 
     update() {
+        // Dodanie szumu termicznego
         this.vx_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
         this.vy_thermal += random(-THERMAL_NOISE_MULTIPLIER, THERMAL_NOISE_MULTIPLIER);
         
+        // Siła sprężysta (siła powrotu do punktu równowagi)
         const dx = this.x_current - this.x_init;
         const dy = this.y_current - this.y_init;
         const ax = -ION_SPRING_CONSTANT * dx;
         const ay = -ION_SPRING_CONSTANT * dy;
 
+        // Zmiana prędkości
         this.vx_thermal += ax * dt;
         this.vy_thermal += ay * dt;
         this.vx_thermal *= DAMPING_FACTOR;
         this.vy_thermal *= DAMPING_FACTOR;
 
+        // Ograniczenie maksymalnej prędkości termicznej (limit drgań)
+        const currentSpeedSq = this.vx_thermal * this.vx_thermal + this.vy_thermal * this.vy_thermal;
+        const maxSpeedSq = ION_MAX_THERMAL_SPEED * ION_MAX_THERMAL_SPEED;
+        
+        if (currentSpeedSq > maxSpeedSq) {
+            const scale = ION_MAX_THERMAL_SPEED / sqrt(currentSpeedSq);
+            this.vx_thermal *= scale;
+            this.vy_thermal *= scale;
+        }
+
+        // Aktualizacja pozycji
         this.x_current += this.vx_thermal * dt;
         this.y_current += this.vy_thermal * dt;
-        
-        // Ograniczenie pozycji jonu do granic obszaru symulacji
-        const MARGIN = 1.0; 
+        
+        // Ograniczenie pozycji jonu do granic obszaru symulacji
+        const MARGIN = 1.0; 
         this.x_current = constrain(this.x_current, MARGIN, L_GRID_WIDTH - MARGIN);
         this.y_current = constrain(this.y_current, MARGIN, L_GRID_HEIGHT - MARGIN);
     }
 
     display() {
-        const ION_SIZE = CELL_SIZE * 1.5; 
+        const ION_SIZE = CELL_SIZE * 2.25; 
         fill(COLOR_ION); 
         noStroke();
         
@@ -163,7 +178,7 @@ class Electron {
     this.y = (this.y + L_GRID_HEIGHT) % L_GRID_HEIGHT;
   }
   
-  checkCollision(ionArray) {
+ checkCollision(ionArray) {
     const COLLISION_RADIUS_SQUARED = sq(CELL_SIZE * 1.0); 
 
     for (let ion of ionArray) {
@@ -178,15 +193,26 @@ class Electron {
         
         const v_normal = this.vx * normal_x + this.vy * normal_y;
         
-        if (v_normal < 0) { 
+        if (v_normal < 0) {
             
-            const v_loss = -v_normal * COLLISION_ENERGY_TRANSFER; 
+            const v_final_normal = -v_normal * COLLISION_ENERGY_TRANSFER * 0.2; 
             
-            this.vx -= v_loss * normal_x;
-            this.vy -= v_loss * normal_y;
+            const v_initial_x = this.vx;
+            const v_initial_y = this.vy;
+
+            const v_tangential_x = v_initial_x - v_normal * normal_x;
+            const v_tangential_y = v_initial_y - v_normal * normal_y;
+
+            this.vx = v_tangential_x + v_final_normal * normal_x;
+            this.vy = v_tangential_y + v_final_normal * normal_y;
             
-            ion.vx_thermal += v_loss * normal_x * 0.5;
-            ion.vy_thermal += v_loss * normal_y * 0.5;
+            const v_change_electron = v_final_normal - v_normal; 
+            
+            const ION_IMPULSE_FACTOR = 0.5; 
+            const v_transfer = v_change_electron * ION_IMPULSE_FACTOR;
+            
+            ion.vx_thermal -= v_transfer * normal_x;
+            ion.vy_thermal -= v_transfer * normal_y;
             
             this.x += normal_x * 0.1;
             this.y += normal_y * 0.1;
@@ -214,17 +240,15 @@ class Electron {
   }
 }
 
-// --- FUNKCJE SETUP I RYSOWANIE ---
 
 function setupPageStyles() {
-  // DODANE: Zerowanie marginesów i ukrywanie przepełnienia, aby wyeliminować paski przewijania
-  select('body').style('margin', '0');
-  select('body').style('padding', '0');
-  select('body').style('overflow', 'hidden'); 
+  select('body').style('margin', '0');
+  select('body').style('padding', '0');
+  select('body').style('overflow', 'hidden'); 
 }
 
 function setup() {
-  setupPageStyles(); 
+  setupPageStyles(); 
   createCanvas(windowWidth, windowHeight);
   textFont('Arial, sans-serif'); 
   defineLayout();
@@ -295,15 +319,24 @@ function initializeElectrons() {
 
 function initializeIons() {
   ions = [];
-  const ION_SPACING = 12; 
-    const START_MARGIN = ION_SPACING / 4;
-    
-    // Zapewnienie, że jony są generowane w całym zakresie
-    for (let i = START_MARGIN; i < L_GRID_WIDTH - START_MARGIN; i += ION_SPACING) {
-        for (let j = START_MARGIN; j < L_GRID_HEIGHT - START_MARGIN; j += ION_SPACING) {
-            ions.push(new Ion(i, j));
-        }
-    }
+  const ION_SPACING = 8; 
+  const START_MARGIN = ION_SPACING / 2; 
+
+
+  const VERTICAL_OFFSET = ION_SPACING / 2; 
+  
+  for (let i = START_MARGIN; i < L_GRID_WIDTH - START_MARGIN; i += ION_SPACING) {
+      
+      const col_index = Math.floor((i - START_MARGIN) / ION_SPACING);
+      const current_offset = (col_index % 2 === 0) ? 0 : VERTICAL_OFFSET;
+      
+      for (let j = START_MARGIN + current_offset; 
+             j < L_GRID_HEIGHT - START_MARGIN; 
+             j += ION_SPACING) 
+      {
+            ions.push(new Ion(i, j));
+      }
+  }
 }
 
 function draw() {
@@ -311,7 +344,6 @@ function draw() {
     
   drawGUIArea();
 
-  // --- 2. Rysowanie Obszaru Symulacji (Metal) ---
   
   fill(COLOR_METAL); 
   rect(SIM_AREA_START_X, SIM_AREA_START_Y, SIM_AREA_WIDTH, SIM_AREA_HEIGHT);
@@ -366,9 +398,9 @@ function drawSideInfo() {
     // Prawa strona (liczniki)
     textAlign(LEFT, TOP);
     textSize(20);
-    text('Liczba (Prawa):', SIM_AREA_START_X + SIM_AREA_WIDTH + 50, SIM_AREA_START_Y + 100); 
+    text('Liczba (Prawa):', SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 100); 
     textSize(36);
-    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 50, SIM_AREA_START_Y + 135); 
+    text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 135); 
     
     // Wizualizacja prądu/dryfu na dole
     textAlign(LEFT, TOP);
