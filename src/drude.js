@@ -51,6 +51,12 @@ const COLOR_ELECTRON = '#FFC300';
 const COLOR_ACCENT = '#FF4500';
 const COLOR_TEXT = '#EAEAEA';
 
+
+const MAX_TRAJECTORY_POINTS = 500;
+let trajectory = [];
+let trackedElectronIndex = 0;
+
+
 class Ion {
     constructor(x, y) {
         this.x_init = x;
@@ -124,7 +130,7 @@ class Electron {
         this.vy = speed * sin(angle);
     }
 
-    update() {
+    update(index) {
         const Fx_E = ELECTRON_CHARGE * E_FIELD_X;
         const Fy_E = ELECTRON_CHARGE * E_FIELD_Y;
 
@@ -140,13 +146,45 @@ class Electron {
         this.vx += random(-ELECTRON_THERMAL_NOISE, ELECTRON_THERMAL_NOISE);
         this.vy += random(-ELECTRON_THERMAL_NOISE, ELECTRON_THERMAL_NOISE);
 
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
+        let newX = this.x + this.vx * dt;
+        let newY = this.y + this.vy * dt;
+
+        this.x = newX;
+        this.y = newY;
 
         this.checkCollision(ions);
 
+        if (index === trackedElectronIndex) {
+            let jumped = false;
+            
+            if (newX < 0 || newX >= L_GRID_WIDTH || newY < 0 || newY >= L_GRID_HEIGHT) {
+                jumped = true;
+            }
+            
+            if (jumped) {
+                trajectory = [];
+            }
+        }
+
         this.x = (this.x + L_GRID_WIDTH) % L_GRID_WIDTH;
         this.y = (this.y + L_GRID_HEIGHT) % L_GRID_HEIGHT;
+        
+        if (index === trackedElectronIndex) {
+            if (trajectory.length === 0) {
+                 trajectory.push({ 
+                     x: this.x * CELL_SIZE + SIM_AREA_START_X, 
+                     y: this.y * CELL_SIZE + SIM_AREA_START_Y 
+                 });
+            } else {
+                trajectory.push({ 
+                    x: this.x * CELL_SIZE + SIM_AREA_START_X, 
+                    y: this.y * CELL_SIZE + SIM_AREA_START_Y 
+                });
+                if (trajectory.length > MAX_TRAJECTORY_POINTS) {
+                    trajectory.shift();
+                }
+            }
+        }
     }
 
     checkCollision(ionArray) {
@@ -194,9 +232,9 @@ class Electron {
         }
     }
 
-    display() {
+    display(index) {
         const ELECTRON_SIZE = CELL_SIZE * 0.8;
-        fill(COLOR_ELECTRON);
+        fill(index === trackedElectronIndex ? COLOR_ACCENT : COLOR_ELECTRON);
         noStroke();
 
         const drawX = this.x * CELL_SIZE + SIM_AREA_START_X;
@@ -291,8 +329,12 @@ function defineLayout() {
 
 function initializeElectrons() {
     electrons = [];
+    trajectory = [];
     for (let i = 0; i < N_PARTICLES; i++) {
         electrons.push(new Electron());
+    }
+    if (trackedElectronIndex >= N_PARTICLES) {
+        trackedElectronIndex = 0;
     }
 }
 
@@ -316,11 +358,29 @@ function initializeIons() {
     }
 }
 
+function drawTrajectory() {
+    if (trajectory.length < 2) return;
+
+    noFill();
+    
+    beginShape();
+    for (let i = 0; i < trajectory.length; i++) {
+        const point = trajectory[i];
+        let alpha = map(i, 0, trajectory.length - 1, 50, 255); 
+        stroke(red(COLOR_ACCENT), green(COLOR_ACCENT), blue(COLOR_ACCENT), alpha);
+        strokeWeight(3);
+        if (i > 0) {
+            line(trajectory[i-1].x, trajectory[i-1].y, point.x, point.y);
+        }
+    }
+    endShape();
+}
+
+
 function draw() {
     background(COLOR_BACKGROUND);
 
     drawGUIArea();
-
 
     fill(COLOR_METAL);
     rect(SIM_AREA_START_X, SIM_AREA_START_Y, SIM_AREA_WIDTH, SIM_AREA_HEIGHT);
@@ -329,6 +389,8 @@ function draw() {
         ion.update();
         ion.display();
     }
+    
+    drawTrajectory();
 
     electrons_left_side = 0;
     electrons_right_side = 0;
@@ -336,9 +398,10 @@ function draw() {
     let total_vx = 0;
     const boundary_x = L_GRID_WIDTH * BOUNDARY_RATIO;
 
-    for (let e of electrons) {
-        e.update();
-        e.display();
+    for (let i = 0; i < electrons.length; i++) {
+        let e = electrons[i];
+        e.update(i);
+        e.display(i);
         total_vx += e.vx;
 
         if (e.x < boundary_x) {
@@ -524,12 +587,12 @@ function drawGUIArea() {
     const new_tau = tempSlider.value();
     const max_tau = 50;
     const min_tau = 5;
-    const noise_range_E = 0.1;
+    const noise_range_E = 0.2; 
     const noise_range_I = 0.003;
 
     const normalized_temp = map(new_tau, min_tau, max_tau, 1, 0);
 
-    ELECTRON_THERMAL_NOISE = 0.01 + normalized_temp * noise_range_E;
+    ELECTRON_THERMAL_NOISE = 0.01 + normalized_temp * noise_range_E; 
     THERMAL_NOISE_MULTIPLIER = 0.0005 + normalized_temp * noise_range_I;
     TAU = new_tau;
 }
@@ -538,8 +601,10 @@ function toggleEField() {
     if (E_FIELD_X === 0) {
         current_e_field = eFieldSlider.value();
         E_FIELD_X = current_e_field;
+        trajectory = [];
     } else {
         E_FIELD_X = 0;
+        trajectory = [];
     }
 }
 
@@ -550,6 +615,7 @@ function updateEField() {
 }
 
 function updateTemperature() {
+    trajectory = [];
 }
 
 function updateParticleCount() {
