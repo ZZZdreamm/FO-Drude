@@ -265,6 +265,21 @@ function windowResized() {
   initializeIons(); 
 }
 
+// Stałe dla wyśrodkowania GUI
+const GUI_ELEMENT_WIDTH = 200; // Szerokość suwaków i tekstów
+const GUI_BUTTON_WIDTH = 120; // Szerokość przycisków
+const GUI_INPUT_WIDTH = 120; // Szerokość inputa
+const GUI_SPACING = 40; 
+const TOTAL_GUI_WIDTH = 
+  GUI_BUTTON_WIDTH + GUI_SPACING + // Przycisk E (120)
+  GUI_ELEMENT_WIDTH + GUI_SPACING + // Slider E (200)
+  GUI_ELEMENT_WIDTH + GUI_SPACING + // Slider TAU (200)
+  GUI_INPUT_WIDTH + GUI_SPACING + // Input N (120)
+  GUI_BUTTON_WIDTH; // Przycisk Zastosuj (120)
+
+const START_X_OFFSET = TOTAL_GUI_WIDTH / 2;
+
+
 function defineLayout() {
   // Używamy zwiększonego MARGIN_X=180
   const MARGIN_X = 180; 
@@ -285,28 +300,32 @@ function defineLayout() {
   const BASE_Y = height - GUI_BOTTOM_HEIGHT + 20;
   const CENTER_X = width / 2;
   
-  if (eFieldSlider) {
-    // Kolumna 1 (Przycisk)
-    select('#eFieldButtonText').position(CENTER_X - 550, BASE_Y + 10);
-    eFieldButton.position(CENTER_X - 550, BASE_Y + 45);
+  // Obliczenie pozycji startowej dla wyśrodkowania
+  let current_x = CENTER_X - START_X_OFFSET;
 
-    // Kolumna 2 (Slider E)
-    select('#eFieldText').position(CENTER_X - 400, BASE_Y + 10);
-    eFieldSlider.position(CENTER_X - 400, BASE_Y + 45); 
+  if (eFieldSlider) {
+    // Kolumna 1: Przycisk E
+    select('#eFieldButtonText').position(current_x, BASE_Y + 10);
+    eFieldButton.position(current_x, BASE_Y + 45);
+    current_x += GUI_BUTTON_WIDTH + GUI_SPACING;
+
+    // Kolumna 2: Slider E
+    select('#eFieldText').position(current_x, BASE_Y + 10);
+    eFieldSlider.position(current_x, BASE_Y + 45); 
+    current_x += GUI_ELEMENT_WIDTH + GUI_SPACING;
     
-    // Kolumna 3 (Slider TAU)
-    select('#tempText').position(CENTER_X - 150, BASE_Y + 10);
-    tempSlider.position(CENTER_X - 150, BASE_Y + 45); 
+    // Kolumna 3: Slider TAU
+    select('#tempText').position(current_x, BASE_Y + 10);
+    tempSlider.position(current_x, BASE_Y + 45); 
+    current_x += GUI_ELEMENT_WIDTH + GUI_SPACING;
     
-    // Kolumna 4 (Input N)
-    select('#particleText').position(CENTER_X + 100, BASE_Y + 10);
-    particleCountInput.position(CENTER_X + 100, BASE_Y + 45);
+    // Kolumna 4: Input N
+    select('#particleText').position(current_x, BASE_Y + 10);
+    particleCountInput.position(current_x, BASE_Y + 45);
+    current_x += GUI_INPUT_WIDTH + GUI_SPACING;
     
-    // Kolumna 5 (Przycisk Zastosuj)
-    select('#applyButton').position(CENTER_X + 230, BASE_Y + 45);
-    
-    // Tekst szumu (niżej, wyśrodkowany)
-//     select('#noiseText').position(CENTER_X - 150, BASE_Y + 100);
+    // Kolumna 5: Przycisk Zastosuj
+    select('#applyButton').position(current_x, BASE_Y + 45);
   }
 }
 
@@ -402,15 +421,14 @@ function drawSideInfo() {
     textSize(36);
     text(`${electrons_right_side}`, SIM_AREA_START_X + SIM_AREA_WIDTH + 20, SIM_AREA_START_Y + 135); 
     
+    // Wizualizacja prądu/dryfu na dole (Wyśrodkowana)
     const BASE_INFO_Y = SIM_AREA_START_Y + SIM_AREA_HEIGHT + 15; 
-    
-    // ZMIANA: Przesunięcie na LEWO o 100 pikseli
-    const INFO_X = SIM_AREA_START_X - 150; 
+    const INFO_X = SIM_AREA_START_X - 50; // ZMIANA: Używamy środka ekranu
 
-    textAlign(LEFT, TOP);
+    textAlign(CENTER, TOP); // ZMIANA: Wyśrodkowanie tekstu
     textSize(16);
     
-    // Prędkość Dryfu (na dole, w lewej kolumnie)
+    // Prędkość Dryfu (na dole, wyśrodkowana)
     fill(COLOR_ELECTRON); 
     text(
         `Prędkość Dryfu vx: ${average_drift_velocity.toFixed(3)}`,
@@ -418,13 +436,19 @@ function drawSideInfo() {
         BASE_INFO_Y
     );
     
-    // Wskaźnik temperatury (poniżej prędkości dryfu)
+    // Wskaźnik temperatury - LINIA 1
     fill(COLOR_ION); 
     text(
-        `Czas Relaksacji (Tau): ${TAU}
-        Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`,
+        `Czas Relaksacji (Tau): ${TAU}`,
         INFO_X,
         BASE_INFO_Y + 25 
+    );
+    
+    // Wskaźnik temperatury - LINIA 2
+    text(
+        `Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`,
+        INFO_X,
+        BASE_INFO_Y + 45 // 20px odstępu
     );
 }
 
@@ -467,11 +491,11 @@ function createGUI() {
     border: 1px solid ${COLOR_ION};
     padding: 8px;
     font-size: 14px;
-    width: 100px;
+    width: ${GUI_INPUT_WIDTH - 18}px;
   `;
   
   const SLIDER_STYLE = `
-    width: 200px;
+    width: ${GUI_ELEMENT_WIDTH}px;
     -webkit-appearance: none;
     background: ${COLOR_METAL};
     height: 8px;
@@ -485,7 +509,7 @@ function createGUI() {
     padding: 10px 15px;
     font-size: 14px;
     cursor: pointer;
-    /* Usunięto width: 120px; */
+    width: ${GUI_BUTTON_WIDTH}px;
     font-weight: bold;
   `;
   
@@ -493,66 +517,59 @@ function createGUI() {
   const BASE_Y = height - GUI_BOTTOM_HEIGHT + 20;
   const CENTER_X = width / 2;
   
-  let x_pos = CENTER_X - 550; 
+  let current_x = CENTER_X - START_X_OFFSET; 
   
   // Funkcja pomocnicza do tworzenia P
-  const createPStyled = (content, id, x, y) => {
+  const createPStyled = (content, id, x, y, width) => {
     return createP(`<strong>${content}</strong>`)
       .position(x, y)
-      .style(`color: ${COLOR_TEXT}; font-size: 16px;`)
+      .style(`color: ${COLOR_TEXT}; font-size: 16px; width: ${width}px; text-align: center;`)
       .id(id);
   };
   
   // --- 1. Kontrola Pola E (Przycisk ON/OFF) ---
-  createPStyled('Pole Elektryczne:', 'eFieldButtonText', x_pos, BASE_Y + 10);
+  createPStyled('Pole E (ON/OFF):', 'eFieldButtonText', current_x, BASE_Y + 10, GUI_BUTTON_WIDTH);
   eFieldButton = createButton('Przełącz E')
-    .position(x_pos, BASE_Y + 45)
+    .position(current_x, BASE_Y + 45)
     .mousePressed(toggleEField)
     .style(BUTTON_STYLE)
     .style(`background: ${E_FIELD_X !== 0 ? COLOR_ACCENT : COLOR_ION}`);
   
-  x_pos += 150; 
+  current_x += GUI_BUTTON_WIDTH + GUI_SPACING; 
   
   // --- 2. Kontrola Wartości Pola E (Slider) ---
-  createPStyled('Wartość Pola E:', 'eFieldText', x_pos, BASE_Y + 10);
-  eFieldSlider = createSlider(-0.5, 0.5, 0.0, 0.01) // Używamy 0.0 jako początkowej wartości
-    .position(x_pos, BASE_Y + 45)
+  createPStyled('Wartość Pola E (Vx):', 'eFieldText', current_x, BASE_Y + 10, GUI_ELEMENT_WIDTH);
+  eFieldSlider = createSlider(-0.5, 0.5, 0.0, 0.01) 
+    .position(current_x, BASE_Y + 45)
     .style(SLIDER_STYLE)
     .input(updateEField);
   
-  x_pos += 250;
+  current_x += GUI_ELEMENT_WIDTH + GUI_SPACING;
   
   // --- 3. Kontrola Temperatury (TAU) ---
-  createPStyled('Czas Relaksacji (τ):', 'tempText', x_pos, BASE_Y + 10);
+  createPStyled('Czas Relaksacji (τ):', 'tempText', current_x, BASE_Y + 10, GUI_ELEMENT_WIDTH);
   tempSlider = createSlider(5, 50, TAU, 1) 
-    .position(x_pos, BASE_Y + 45)
+    .position(current_x, BASE_Y + 45)
     .style(SLIDER_STYLE)
     .input(updateTemperature);
   
-  x_pos += 250;
+  current_x += GUI_ELEMENT_WIDTH + GUI_SPACING;
 
   // --- 4. Kontrola Liczby Elektronów ---
-  createPStyled('Liczba Elektronów:', 'particleText', x_pos, BASE_Y + 10);
+  createPStyled('Liczba Elektronów:', 'particleText', current_x, BASE_Y + 10, GUI_INPUT_WIDTH);
   particleCountInput = createInput(N_PARTICLES.toString(), 'number')
-    .position(x_pos, BASE_Y + 45)
+    .position(current_x, BASE_Y + 45)
     .style(INPUT_STYLE);
 
-  x_pos += 150;
+  current_x += GUI_INPUT_WIDTH + GUI_SPACING;
 
   // --- 5. Przycisk Zastosuj ---
   createButton('Zastosuj').id('applyButton')
-    .position(x_pos, BASE_Y + 45)
+    .position(current_x, BASE_Y + 45)
     .mousePressed(updateParticleCount)
     .style(BUTTON_STYLE)
     .style('background', COLOR_ION);
     
-  // Inicjalizacja tekstu na dole (Wartości dynamiczne)
-//   createPStyled(`Szum E: ${ELECTRON_THERMAL_NOISE.toFixed(3)} | Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`, 
-//                  'noiseText', CENTER_X - 150, BASE_Y + 100)
-//     .style('font-size', '14px');
-    
-    // Konieczne jest wywołanie defineLayout() ponownie po utworzeniu elementów,
-    // aby pozycje były poprawne od razu
     defineLayout(); 
 }
 
@@ -567,7 +584,7 @@ function drawGUIArea() {
   eFieldButton.html(E_FIELD_X !== 0 ? 'POLE E (WŁ.)' : 'POLE E (WYŁ.)');
 
   // Aktualizacja tekstu GUI
-  select('#eFieldText').html(`Wartość Pola E: ${eFieldSlider.value().toFixed(2)}`);
+  select('#eFieldText').html(`Wartość Pola E (Vx): ${eFieldSlider.value().toFixed(2)}`);
   select('#tempText').html(`Czas Relaksacji (τ): ${TAU}`);
   
   const new_tau = tempSlider.value();
@@ -581,8 +598,6 @@ function drawGUIArea() {
   ELECTRON_THERMAL_NOISE = 0.01 + normalized_temp * noise_range_E;
   THERMAL_NOISE_MULTIPLIER = 0.0005 + normalized_temp * noise_range_I;
   TAU = new_tau;
-
-//   select('#noiseText').html(`Szum E: ${ELECTRON_THERMAL_NOISE.toFixed(3)} | Szum Jonów: ${THERMAL_NOISE_MULTIPLIER.toFixed(4)}`);
 }
 
 function toggleEField() {
