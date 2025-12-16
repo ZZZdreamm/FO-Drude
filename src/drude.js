@@ -601,10 +601,8 @@ function toggleEField() {
     if (E_FIELD_X === 0) {
         current_e_field = eFieldSlider.value();
         E_FIELD_X = current_e_field;
-        trajectory = [];
     } else {
         E_FIELD_X = 0;
-        trajectory = [];
     }
 }
 
@@ -615,7 +613,7 @@ function updateEField() {
 }
 
 function updateTemperature() {
-    trajectory = [];
+
 }
 
 function updateParticleCount() {
